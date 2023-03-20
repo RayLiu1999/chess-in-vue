@@ -1,8 +1,8 @@
 <template>
   <h1>Chess With Vue</h1>
-  <div class="wrap">
+  <div class="wrap" ref="parent" @click="cancelSelect($event)">
     <div class="main">
-      <Chessboard/>
+      <Chessboard :parent-piece="selectPieceObj" />
     </div>
   </div>
 </template>
@@ -17,65 +17,31 @@ export default {
     Chessboard
   },
   data() {
-    return {
-      boardSize: 8,
-
-    };
   },
   created() {
     this.reset();
   },
   methods: {
     reset() {
-      
     },
-    squareClasses(rowIndex, colIndex) {
-      const classes = [];
-      if ((rowIndex + colIndex) % 2 === 0) {
-        classes.push('light-square');
-      } else {
-        classes.push('dark-square');
+    // 取消選取
+    cancelSelect(e) {
+      let target = e.target;
+      let parents = [];
+
+      while (target !== this.$refs.parent) {
+        parents.push(target.parentNode.className);
+        target = target.parentNode;
       }
-      if (this.selectedSquare && this.selectedSquare[0] === rowIndex && this.selectedSquare[1] === colIndex) {
-        classes.push('selected');
+
+      // 如果點擊的不是棋盤，則取消選取
+      if (!parents.includes('chess-board')) {
+        this.$store.commit('setSelectedStatus', {
+          piece: {},
+          position: {},
+        })
+        this.$store.commit('setValidMoves', []);
       }
-      return classes; 
-    },
-    movePiece(rowIndex, colIndex) {
-      if (this.selectedSquare) {
-        const [selectedRow, selectedCol] = this.selectedSquare;
-        this.board[selectedRow][selectedCol] = null;
-        this.board[rowIndex][colIndex] = 'P';
-        this.selectedSquare = null;
-      } else {
-        this.selectedSquare = [rowIndex, colIndex];
-      }
-    },
-    isValidMove(fromRow, fromCol, toRow, toCol) {
-      const piece = this.board[fromRow][fromCol];
-      switch (piece) {
-        case "pawn":
-          // Pawn move logic here
-          break;
-        case "rook":
-          // Rook move logic here
-          break;
-        case "knight":
-          // Knight move logic here
-          break;
-        case "bishop":
-          // Bishop move logic here
-          break;
-        case "queen":
-          // Queen move logic here
-          break;
-        case "king":
-          // King move logic here
-          break;
-        default:
-          return false;
-      }
-      return true;
     }
   }
 };
@@ -83,10 +49,10 @@ export default {
 
 <style>
 h1 {
-    text-align: center;
-    font-family: Arial, sans-serif;
-    font-size: 4rem;
-    color: #3eaf7c;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 4rem;
+  color: #3eaf7c;
 }
 
 .wrap {
