@@ -47,34 +47,4 @@ export default {
 .white {
   fill: #FFFFFF;
 }
-
-/* .pawn-piece {
-    font-size: 24px;
-    text-align: center;
-}
-
-.rook-piece {
-    font-size: 24px;
-    text-align: center;
-}
-
-.knight-piece {
-    font-size: 24px;
-    text-align: center;
-}
-
-.bishop-piece {
-    font-size: 24px;
-    text-align: center;
-}
-
-.queen-piece {
-    font-size: 24px;
-    text-align: center;
-}
-
-.king-piece {
-    font-size: 24px;
-    text-align: center;
-} */
 </style>

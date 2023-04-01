@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Chess Game</title>
+    <!-- <link rel="stylesheet" type="text/css" href="style.css"> -->
+</head>
+
+<body>
+    <div id="chessboard">
+    </div>
+    <!-- <script src="script.js"></script> -->
+</body>
+
+</html>
+<style>
+    #chessboard {
+        width: 640px;
+        height: 640px;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .chess-tile {
+        width: 80px;
+        height: 80px;
+        float: left;
+        position: relative;
+    }
+
+    .chess-piece {
+        width: 80px;
+        height: 80px;
+        position: absolute;
+    }
+
+    .black-tile {
+        background-color: #b58863;
+    }
+
+    .white-tile {
+        background-color: #f0d9b5;
+    }
+</style>
+<script>
+    // 定義棋盤
+    var chessboard = [];
+
+    // 定義當前選中的棋子
+    var selectedPiece = null;
+
+    // 定義當前輪到哪一方
+    var currentColor = "white";
+
+    // 初始化棋盤
+    function initChessboard() {
+        for (var i = 0; i < 8; i++) {
+            chessboard[i] = [];
+            for (var j = 0; j < 8; j++) {
+                if (i == 0 || i == 7) {
+                    // 飛車、馬、象、后、王、象、馬、飛車
+                    if (j == 0 || j == 7) {
+                        chessboard[i][j] = { type: "rook", color: (i == 0 ? "black" : "white") };
+                    } else if (j == 1 || j == 6) {
+                        chessboard[i][j] = { type: "knight", color: (i == 0 ? "black" : "white") };
+                    } else if (j == 2 || j == 5) {
+                        chessboard[i][j] = { type: "bishop", color: (i == 0 ? "black" : "white") };
+                    } else if (j == 3) {
+                        chessboard[i][j] = { type: "queen", color: (i == 0 ? "black" : "white") };
+                    } else if (j == 4) {
+                        chessboard[i][j] = { type: "king", color: (i == 0 ? "black" : "white") };
+                    }
+                } else if (i == 1 || i == 6) {
+                    // 兵
+                    chessboard[i][j] = { type: "pawn", color: (i == 1 ? "black" : "white") };
+                }
+
+            }
+
+        }
+    }
+
+    // 顯示棋盤
+    function showChessboard() {
+        var boardDiv = document.getElementById("chessboard");
+
+        // 清空棋盤
+        boardDiv.innerHTML = "";
+
+        for (var i = 0; i < 8; i++) {
+            for (var j = 0; j < 8; j++) {
+                var tileDiv = document.createElement("div");
+                tileDiv.className = "chess-tile " + ((i + j) % 2 == 0 ? "white-tile" : "black-tile");
+
+                if (chessboard[i][j]) {
+                    var pieceDiv = document.createElement("div");
+                    pieceDiv.className = "chess-piece " + chessboard[i][j].color + "-" + chessboard[i][j].type;
+                    pieceDiv.addEventListener("click", pieceClicked);
+                    pieceDiv.setAttribute("data-x", j);
+                    pieceDiv.setAttribute("data-y", i);
+                    tileDiv.appendChild(pieceDiv);
+                }
+
+                boardDiv.appendChild(tileDiv);
+            }
+        }
+    }
+
+    // 棋子被點擊
+    function pieceClicked(e) {
+        var x = parseInt(e.target.getAttribute("data-x"));
+        var y = parseInt(e.target.getAttribute("data-y"));
+        // 如果點擊的是已經選中的棋子，取消選中
+        if (selectedPiece && selectedPiece.x == x && selectedPiece.y == y) {
+            selectedPiece = null;
+            showChessboard();
+            return;
+        }
+        // 如果沒有選中任何棋子，選中這個棋子
+        if (!selectedPiece) {
+            if (chessboard[y][x] && chessboard[y][x].color == currentColor) {
+                selectedPiece = { x: x, y: y };
+                showChessboard();
+            }
+            return;
+        }
+
+        // 如果選中的是自己的棋子，取消選中
+        if (chessboard[y][x] && chessboard[y][x].color == currentColor) {
+            selectedPiece = { x: x, y: y };
+            showChessboard();
+            return;
+        }
+
+        // 如果選中的是空白的位置，移動棋子
+        if (!chessboard[y][x]) {
+            if (isValidMove(selectedPiece.x, selectedPiece.y, x, y)) {
+                chessboard[y][x] = chessboard[selectedPiece.y][selectedPiece.x];
+                chessboard[selectedPiece.y][selectedPiece.x] = null;
+                selectedPiece = null;
+                currentColor = currentColor == "white" ? "black" : "white";
+                showChessboard();
+                checkVictory();
+            }
+            return;
+        }
+
+        // 如果選中的是對方的棋子，吃掉對方的棋子
+        if (chessboard[y][x] && chessboard[y][x].color != currentColor) {
+            if (isValidMove(selectedPiece.x, selectedPiece.y, x, y)) {
+                chessboard[y][x] = chessboard[selectedPiece.y][selectedPiece.x];
+                chessboard[selectedPiece.y][selectedPiece.x] = null;
+                selectedPiece = null;
+                currentColor = currentColor == "white" ? "black" : "white";
+                showChessboard();
+                checkVictory();
+            }
+            return;
+        }
+    }
+
+    // 檢查移動是否有效
+    function isValidMove(startX, startY, endX, endY) {
+        var piece = chessboard[startY][startX];
+        var dx = endX - startX;
+        var dy = endY - startY;
+        // 兵的移動
+        if (piece.type == "pawn") {
+            if (piece.color == "white") {
+                if (dx == 0 && dy == -1 && !chessboard[endY][endX]) {
+                    return true;
+                }
+                if (startY == 6 && dx == 0 && dy == -2 && !chessboard[endY][endX] && !chessboard[startY - 1][endX]) {
+                    return true;
+                }
+                if (dx == -1 && dy == -1 && chessboard[endY][endX] && chessboard[endY][endX].color == "black") {
+                    return true;
+                }
+                if (dx == 1 && dy == -1 && chessboard[endY][endX] && chessboard[endY][endX].color == "black") {
+                    return true;
+                }
+            } else {
+                if (dx == 0 && dy == 1 && !chessboard[endY][endX]) {
+                    return true;
+                }
+                if (startY == 1 && dx == 0 && dy == 2 && !chessboard[endY][endX] && !chessboard[startY + 1][endX]) {
+                    return true;
+                }
+                if (dx == -1 && dy == 1 && chessboard[endY][endX] && chessboard[endY][endX].color == "white") {
+                    return true;
+                }
+                if (dx == 1 && dy == 1 && chessboard[endY][endX] && chessboard[endY][endX].color == "white") {
+                    return true;
+                }
+            }
+        }
+        // 馬的移動
+        if (piece.type == "knight") {
+            if ((dx == 1 && dy == 2) || (dx == -1 && dy == 2) || (dx == 1 && dy == -2) || (dx == -1 && dy == -2) || (dx == 2 && dy == 1) || (dx == -2 && dy == 1) || (dx == 2 && dy == -1) || (dx == -2 && dy == -1)) {
+                if (!chessboard[endY][endX] || chessboard[endY][endX].color != piece.color) {
+                    return true;
+                }
+            }
+        }
+
+        // 象的移動
+        if (piece.type == "bishop") {
+            if (Math.abs(dx) == Math.abs(dy)) {
+                var xStep = dx > 0 ? 1 : -1;
+                var yStep = dy > 0 ? 1 : -1;
+                var x = startX + xStep;
+                var y = startY + yStep;
+                while (x != endX && y != endY) {
+                    if (chessboard[y][x]) {
+                        return false;
+                    }
+                    x += xStep;
+                    y += yStep;
+                }
+                if (!chessboard[endY][endX] || chessboard[endY][endX].color != piece.color) {
+                    return true;
+                }
+            }
+        }
+
+        // 車的移動
+        if (piece.type == "rook") {
+            if (dx == 0 || dy == 0) {
+                var xStep = dx == 0 ? 0 : dx > 0 ? 1 : -1;
+                var yStep = dy == 0 ? 0 : dy > 0 ? 1 : -1;
+                var x = startX + xStep;
+                var y = startY + yStep;
+                while (x != endX || y != endY) {
+                    if (chessboard[y][x]) {
+                        return false;
+                    }
+                    x += xStep;
+                    y += yStep;
+                }
+                if (!chessboard[endY][endX] || chessboard[endY][endX].color != piece.color) {
+                    return true;
+                }
+            }
+        }
+
+        // 后的移动
+        if (piece.type == "queen") {
+            if (dx == 0 || dy == 0 || Math.abs(dx) == Math.abs(dy)) {
+                var xStep = dx == 0 ? 0 : dx > 0 ? 1 : -1;
+                var yStep = dy == 0 ? 0 : dy > 0 ? 1 : -1;
+                var x = startX + xStep;
+                var y = startY + yStep;
+                while (x != endX || y != endY) {
+                    if (chessboard[y][x]) {
+                        return false;
+                    }
+                    x += xStep;
+                    y += yStep;
+                }
+                if (!chessboard[endY][endX] || chessboard[endY][endX].color != piece.color) {
+                    return true;
+                }
+            }
+        }
+        // 王的移动
+        if (piece.type == "king") {
+            if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+                if (!chessboard[endY][endX] || chessboard[endY][endX].color != piece.color) {
+                    return true;
+                }
+            }
+            if (dx == 0 && dy == -2 && piece.color == "black" && !piece.hasMoved && !chessboard[startY][startX + 1] && !chessboard[startY][startX + 2] && chessboard[startY][startX - 4] && chessboard[startY][startX - 4].type == "rook" && !chessboard[startY][startX - 4].hasMoved) {
+                return true;
+            }
+            if (dx == 0 && dy == 2 && piece.color == "white" && !piece.hasMoved && !chessboard[startY][startX - 1] && !chessboard[startY][startX - 2] && !chessboard[startY][startX - 3] && chessboard[startY][startX + 3] && chessboard[startY][startX + 3].type == "rook" && !chessboard[startY][startX + 3].hasMoved) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+
+移动棋子
+@param {number} startY 开始位置的y坐标
+@param {number} startX 开始位置的x坐标
+@param {number} endY 结束位置的y坐标
+@param {number} endX 结束位置的x坐标
+*/
+    function movePiece(startY, startX, endY, endX) {
+        var piece = chessboard[startY][startX];
+        if (piece && canMovePiece(startY, startX, endY, endX)) {
+            if (piece.type == "pawn" && ((piece.color == "white" && endY == 0) || (piece.color == "black" && endY == 7))) {
+                piece.type = "queen";
+                piece.image = piece.color == "white" ? whiteQueenImage : blackQueenImage;
+            }
+            chessboard[startY][startX] = null;
+            chessboard[endY][endX] = piece;
+            piece.hasMoved = true;
+            switchTurn();
+            drawBoard();
+        }
+    }
+
+    /**
+	
+    切换玩家
+    */
+    function switchTurn() {
+        turn = turn == "white" ? "black" : "white";
+    }
+
+    // 初始化游戏
+    initChessboard();
+</script>
