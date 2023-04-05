@@ -1,5 +1,6 @@
 <template>
   <h1>Chess With Vue</h1>
+  <div class="btn" @click="postAPi()">start</div>
   <div class="wrap" ref="parent" @click="cancelSelect($event)">
     <div class="main">
       <Chessboard :parent-piece="selectPieceObj" />
@@ -41,6 +42,25 @@ export default {
         })
         this.$store.commit('setValidMoves', []);
       }
+    },
+    postAPi() {
+      axios.post('https://api.openai.com/v1/chat/completions', {
+        model: "gpt-3.5-turbo",
+        messages: [{"role": "user", "content": "Say this is a test!"}],
+        temperature: 0.7
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer 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',
+        },
+      }
+      )
+        .then((response) => {
+          console.log(response);
+        })
+        .catch((error) => { 
+          console.error(error);
+        });
     }
   }
 };
@@ -66,4 +86,4 @@ h1 {
   display: flex;
   justify-content: center;
 }
-</style>
+</style> 
