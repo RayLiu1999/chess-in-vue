@@ -130,6 +130,7 @@ export default {
             this.board[this.selectedStatus.position.row][this.selectedStatus.position.col] = null;
             this.board[row][col] = this.selectedStatus.piece;
             this.selectedStatus.position = { row, col };
+            console.log(this.selectedStatus.position);
             if (this.checkWin()) {
               alert(this.whoesTurn + 'win!');
               return;
@@ -456,12 +457,11 @@ export default {
       // 獲取移動後棋子可移動範圍
       let pieceMoves = this.getAvailableMoves(this.selectedStatus.position, this.selectedStatus.piece);
 
-      console.log(pieceMoves);
-
       // 是否成功將軍
       let check = false;
 
       // 檢查當下移動的棋子是否可以吃掉王
+      console.log(pieceMoves);
       pieceMoves.some((move) => {
         if (move.row == kingPosition.row && move.col == kingPosition.col) {
           check = true;
