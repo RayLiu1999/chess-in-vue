@@ -127,16 +127,24 @@ export default {
         // 移動棋子
         for (let dir of this.validMoves) {
           if (dir.row == row && dir.col == col) {
+            let target = this.board[row][col];
+            
             this.board[this.selectedStatus.position.row][this.selectedStatus.position.col] = null;
             this.board[row][col] = this.selectedStatus.piece;
             this.selectedStatus.position = { row, col };
-            console.log(this.selectedStatus.position);
+
+            if (target != null && target.type == 'king') {
+              alert(this.whoesTurn + 'win!');
+              return;
+            }
+
             if (this.checkWin()) {
               alert(this.whoesTurn + 'win!');
               return;
             }
             this.cleanSelected();
             this.whoesTurn = this.whoesTurn == 'white' ? 'black' : 'white';
+            return;
           }
         }
       }
@@ -222,9 +230,6 @@ export default {
         let nx = x + dir[0];
         let ny = y + dir[1];
 
-        // 檢查是否可以移動
-        let canMove = true;
-
         // 檢查是否在棋盤範圍內
         if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
           // 獲取目標棋子
@@ -233,38 +238,32 @@ export default {
           // 步數為2時，檢查是否第一次移動
           if (Math.abs(dir[1]) == 2) {
             if (color == 'white' && y != 6) {
-              canMove = false;
+              continue;
             }
             if (color == 'black' && y != 1) {
-              canMove = false;
+              continue;
             }
           }
 
           // 檢查是否為吃子
           if (Math.abs(dir[0]) == 1 && Math.abs(dir[1]) == 1) {
-            if (target != null && target.color != color) {
-              moves.push({ row: ny, col: nx });
+            if (target == null || target.color == color) {
               continue;
-            } 
-            else {
-              canMove = false;
             }
           }
           // 檢查前方有異色棋子時，不能移動
           else if (Math.abs(dir[0]) == 0 && Math.abs(dir[1]) == 1 && target != null) {
-            canMove = false;
+            continue;
           }
           // 移動兩步時，前方兩格都要檢查
           else if (Math.abs(dir[0]) == 0 && Math.abs(dir[1]) == 2) {
             if (target != null || this.board[ny - 1][nx] != null) {
-              canMove = false;
+              continue;
             }
           }
           
-          // 檢查是否可以移動
-          if (canMove) {
-            moves.push({ row: ny, col: nx });
-          }
+          // 加入可以移動的座標
+          moves.push({ row: ny, col: nx });
         }
       }
 
@@ -461,7 +460,6 @@ export default {
       let check = false;
 
       // 檢查當下移動的棋子是否可以吃掉王
-      console.log(pieceMoves);
       pieceMoves.some((move) => {
         if (move.row == kingPosition.row && move.col == kingPosition.col) {
           check = true;
