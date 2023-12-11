@@ -7,6 +7,7 @@ const store = createStore({
       position: {},
     },
     validMoves: [],
+    round: 0,
   },
   mutations: {
     // setSelectedStatus(state, payload) {
@@ -17,6 +18,9 @@ const store = createStore({
     }, 
     setValidMoves(state, moves) {
       state.validMoves = moves;
+    },
+    addRound(state) {
+      state.round++;
     }
   },
   actions: {

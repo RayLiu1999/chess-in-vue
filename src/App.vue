@@ -1,9 +1,9 @@
 <template>
   <h1>Chess With Vue</h1>
-  <div class="btn" @click="postAPi()">start</div>
+  <div class="btn" @click="test()">start</div>
   <div class="wrap" ref="parent" @click="cancelSelect($event)">
     <div class="main">
-      <Chessboard :parent-piece="selectPieceObj" />
+      <Chessboard ref="childComponentRef" :parent-piece="selectPieceObj" />
     </div>
   </div>
 </template>
@@ -18,12 +18,7 @@ export default {
   },
   data() {
     return {
-      api: {
-        role: 'user',
-        moveStep: '1. d4 Nf6 2. c4 g6 3. g3 Bg7 4. Bg2 d6 5. Nc3 Nf6 6. Nf3 Ng8f6 7. O-O e-5 8. d5 O-O 9. e4 Nh5 10. Rb1',
-        message: '現在開始一場西洋棋，我是白方你是黑方，目前移動狀況為:',
-        message2: '請移動你的棋子，並只返回目前步數與移動後棋子代號，例如: 2. f3'
-      }, 
+
       position: {
         row: {          
           'a': 0,
@@ -73,28 +68,8 @@ export default {
         this.$store.commit('setValidMoves', []);
       }
     },
-    postAPi() {
-      let msg = this.api.message + this.api.moveStep + this.api.message2;
-
-      axios.post('https://api.openai.com/v1/chat/completions', {
-        model: "gpt-3.5-turbo",
-        messages: [{"role": "user", "content": msg}],
-        temperature: 0.7,
-        max_tokens: 100,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer '+ import.meta.env.VITE_OPEN_API_KEY ,
-        },
-      }
-      )
-        .then((response) => {
-          const messageContent = response.data.choices[0].message.content;
-          console.log(messageContent);
-        }) 
-        .catch((error) => { 
-          console.error(error.response.data); 
-        });
+    test() {
+      this.$refs.childComponentRef.postAPi()
     }
   }
 };
