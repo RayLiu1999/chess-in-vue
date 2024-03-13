@@ -14,34 +14,33 @@ import Chessboard from './components/ChessBoard.vue';
 export default {
   components: {
     // ChessPiece,
-    Chessboard
+    Chessboard,
   },
   data() {
     return {
-
       position: {
-        row: {          
-          'a': 0,
-          'b': 1,
-          'c': 2,
-          'd': 3,
-          'e': 4,
-          'f': 5,
-          'g': 6,
-          'h': 7,
+        row: {
+          a: 0,
+          b: 1,
+          c: 2,
+          d: 3,
+          e: 4,
+          f: 5,
+          g: 6,
+          h: 7,
         },
         col: {
-          '1': 7,
-          '2': 6,
-          '3': 5,
-          '4': 4,
-          '5': 3,
-          '6': 2,
-          '7': 1,
-          '8': 0,
-        }
-      }
-    }
+          1: 7,
+          2: 6,
+          3: 5,
+          4: 4,
+          5: 3,
+          6: 2,
+          7: 1,
+          8: 0,
+        },
+      },
+    };
   },
   created() {
     this.reset();
@@ -51,12 +50,12 @@ export default {
     },
     // 取消選取
     cancelSelect(e) {
-      let target = e.target;
-      let parents = [];
+      let dom = e.target;
+      const parents = [];
 
-      while (target !== this.$refs.parent) {
-        parents.push(target.parentNode.className);
-        target = target.parentNode;
+      while (dom !== this.$refs.parent) {
+        parents.push(dom.parentNode.className);
+        dom = dom.parentNode;
       }
 
       // 如果點擊的不是棋盤，則取消選取
@@ -64,16 +63,16 @@ export default {
         this.$store.commit('setSelectedStatus', {
           piece: {},
           position: {},
-        })
+        });
         this.$store.commit('setValidMoves', []);
       }
     },
     test() {
-      this.$refs.childComponentRef.postAPi()
-    }
-  }
+      this.$refs.childComponentRef.postAPi();
+    },
+  },
 };
-</script >
+</script>
 
 <style>
 h1 {
@@ -95,4 +94,4 @@ h1 {
   display: flex;
   justify-content: center;
 }
-</style> 
+</style>

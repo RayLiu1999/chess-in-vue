@@ -5,31 +5,31 @@
 </template>
 
 <script>
-import P from "./pieces/Pawn.vue";
-import R from "./pieces/Rook.vue";
-import N from "./pieces/Knight.vue";
-import B from "./pieces/Bishop.vue";
-import Q from "./pieces/Queen.vue";
-import K from './pieces/King.vue';
+import Pawn from './pieces/Pawn.vue';
+import Rook from './pieces/Rook.vue';
+import Knight from './pieces/Knight.vue';
+import Bishop from './pieces/Bishop.vue';
+import Queen from './pieces/Queen.vue';
+import King from './pieces/King.vue';
 
 export default {
   components: {
-    P,
-    R,
-    N,
-    B,
-    Q,
-    K
+    Pawn,
+    Rook,
+    Knight,
+    Bishop,
+    Queen,
+    King,
   },
   props: {
     type: {
       type: String,
-      required: true
+      required: true,
     },
     color: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
 };
 </script>

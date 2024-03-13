@@ -1,4 +1,4 @@
-import { createStore, mapMutations, mapState } from "vuex";
+import { createStore } from 'vuex';
 
 const store = createStore({
   state: {
@@ -7,27 +7,30 @@ const store = createStore({
       position: {},
     },
     validMoves: [],
-    round: 0,
+    round: 1,
   },
   mutations: {
     // setSelectedStatus(state, payload) {
     //   Object.assign(state, payload);
     // }
     setSelectedStatus(state, piece) {
+      // eslint-disable-next-line no-param-reassign
       state.selectedStatus = piece;
-    }, 
+    },
     setValidMoves(state, moves) {
+      // eslint-disable-next-line no-param-reassign
       state.validMoves = moves;
     },
     addRound(state) {
-      state.round++;
-    }
+      // eslint-disable-next-line no-param-reassign
+      state.round += 1;
+    },
   },
   actions: {
 
   },
   modules: {
-  }
+  },
 });
 
 export default store;
