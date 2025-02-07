@@ -1,7 +1,7 @@
 <template>
   <div ref="child" class="chess-board">
     <div v-for="(row, rowIndex) in board" :key="rowIndex" class="chess-row">
-      {{ Math.abs(8 - parseInt(rowIndex)) }}
+      <!-- {{ Math.abs(8 - parseInt(rowIndex)) }} -->
       <div v-for="(col, colIndex) in row" :key="colIndex" class="chess-col">
         <div
           :class="['box', { selected: classSelected(parseInt(rowIndex), parseInt(colIndex)) }]"
@@ -12,7 +12,7 @@
               canMove: col === null && classMove(parseInt(rowIndex), parseInt(colIndex)),
               canEat: col != null && classMove(parseInt(rowIndex), parseInt(colIndex)),
             }">
-            {{ word(parseInt(rowIndex), parseInt(colIndex)) }}
+            <!-- {{ word(parseInt(rowIndex), parseInt(colIndex)) }} -->
           </div>
         </div>
       </div>
@@ -24,6 +24,7 @@
 import { mapState } from 'vuex';
 import axios from 'axios';
 import ChessPiece from './ChessPiece.vue';
+import stockfishService from '@/services/stockfish.service';
 
 export default {
   components: {
@@ -46,16 +47,7 @@ export default {
       },
       board: {},
       whoesTurn: 'white',
-      api: {
-        role: 'user',
-        // moveStep: '1. e6 d5 2. e5 f6 3. Qf6 f3 4. Qxf3',
-        // moveStep: '1. e3 e5 2. Na3 ',
-        moveStep: '',
-        // message: "你對西洋棋非常了解。讓我們開始一場西洋棋。我是白方，你是黑方，並給我你的移動記譜。以下是目前的記譜狀況:",
-        message: `
-        You have a great understanding of chess. Let's start a game of chess. I'm playing as White, and you're playing as Black. Please provide your moves in notation. Here is the current move:`,
-        message2: '',
-      },
+      stockfishReady: false, // Stockfish狀態
       colToWord: {
         0: 'a',
         1: 'b',
@@ -84,7 +76,18 @@ export default {
   created() {
     this.initialBoardState();
   },
-  mounted() {
+  async mounted() {
+    try {
+      console.log('正在初始化Stockfish引擎...');
+      await stockfishService.init();
+      this.stockfishReady = true;
+      console.log('Stockfish引擎初始化成功');
+    } catch (error) {
+      console.error('Stockfish引擎初始化失敗:', error);
+    }
+  },
+  beforeUnmount() {
+    stockfishService.destroy();
   },
   methods: {
     word(rowIndex, colIndex) {
@@ -94,235 +97,65 @@ export default {
       }
       return '';
     },
-    async chatWithFunctionCalling() {
-      const API_KEY = import.meta.env.VITE_OPEN_API_KEY;
-      const API_URL = 'https://api.openai.com/v1/chat/completions';
+    // async chatWithFunctionCalling() {
+    //   const API_KEY = import.meta.env.VITE_OPEN_API_KEY;
+    //   const API_URL = 'https://api.openai.com/v1/chat/completions';
 
-      const chatMessages = [
-        {
-          role: 'user',
-          content: "What's the weather like in Boston?",
-        },
-      ];
+    //   const chatMessages = [
+    //     {
+    //       role: 'user',
+    //       content: "What's the weather like in Boston?",
+    //     },
+    //   ];
 
-      const functions = [
-        {
-          name: 'get_current_weather',
-          description: 'Get the current weather in a given location',
-          parameters: {
-            type: 'object',
-            properties: {
-              location: {
-                type: 'string',
-                description: 'The city and state, e.g. San Francisco, CA',
-              },
-              unit: { type: 'string', enum: ['celsius', 'fahrenheit'] },
-            },
-            required: ['location'],
-          },
-        },
-      ];
+    //   const functions = [
+    //     {
+    //       name: 'get_current_weather',
+    //       description: 'Get the current weather in a given location',
+    //       parameters: {
+    //         type: 'object',
+    //         properties: {
+    //           location: {
+    //             type: 'string',
+    //             description: 'The city and state, e.g. San Francisco, CA',
+    //           },
+    //           unit: { type: 'string', enum: ['celsius', 'fahrenheit'] },
+    //         },
+    //         required: ['location'],
+    //       },
+    //     },
+    //   ];
 
-      const response = await axios.post(
-        API_URL,
-        {
-          // model: 'gpt-3.5-turbo-0613',
-          // model: 'gpt-4-0613',
-          model: 'gpt-4-1106-preview',
-          messages: chatMessages,
-          functions,
-          function_call: 'auto',
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${API_KEY}`,
-          },
-        },
-      );
+    //   const response = await axios.post(
+    //     API_URL,
+    //     {
+    //       // model: 'gpt-3.5-turbo-0613',
+    //       // model: 'gpt-4-0613',
+    //       model: 'gpt-4-1106-preview',
+    //       messages: chatMessages,
+    //       functions,
+    //       function_call: 'auto',
+    //     },
+    //     {
+    //       headers: {
+    //         'Content-Type': 'application/json',
+    //         Authorization: `Bearer ${API_KEY}`,
+    //       },
+    //     },
+    //   );
 
-      const responseData = response.data;
-      console.log(responseData.choices[0].message);
-      console.log(responseData.choices[0].message.function_call);
+    //   const responseData = response.data;
+    //   console.log(responseData.choices[0].message);
+    //   console.log(responseData.choices[0].message.function_call);
 
-      if (responseData.function_calls && responseData.function_calls.length > 0) {
-        const functionCall = responseData.function_calls[0];
-        if (functionCall.name === 'tell_joke') {
-          console.log('Telling a joke...');
-          // Call your tell_joke function here
-        }
-      }
-    },
-    aiTurn() {
-      const msg = this.api.message + this.api.moveStep + this.api.message2;
-
-      console.log(msg);
-
-      axios.post('https://api.openai.com/v1/chat/completions', {
-        // model: "gpt-3.5-turbo-0613",
-        model: 'gpt-4-0613',
-        messages: [{ role: 'user', content: msg }],
-        functions: [
-          {
-            name: 'move_chess_piece',
-            // "description": "Move a chess piece and return the notation of your move",
-            // "description": "移動棋子並回傳你移動的記譜",
-            description: 'move black chess piece and provide your moves in notation',
-            parameters: {
-              type: 'object',
-              properties: {
-                // "startNotation": {
-                //   "type": "string",
-                //   "description": "起始位置",
-                //   "enum": ["a1", "b2", "c3", "d4", "e5", "f6", "g7", "h8"]
-                // },
-                // "MovedNotation": {
-                //   "tyep": "string",
-                //   "description": "移動棋子記譜",
-                //   "enum": ["P", "R", "N", "B", "Q", "K", "O-O", "O-O-O"]
-                // }
-                pieceType: {
-                  type: 'string',
-                  // "description": "你移動的棋子類型，禁止回傳enum以外類型",
-                  description: 'The type of piece you are moving, do not return types other than enum',
-                  enum: ['P', 'R', 'N', 'B', 'Q', 'K'],
-                },
-                pieceAction: {
-                  type: 'string',
-                  // "description": "你移動的棋子動作，禁止回傳enum以外動作",
-                  description: 'The action of the piece you are moving, do not return actions other than enum',
-                  enum: ['', 'x', '=', '+', '#', 'e.p.'], // 空字串代表移動
-                },
-                piecePosition: {
-                  type: 'string',
-                  // "description": "你移動棋子的位置，禁止回傳enum以外位置",
-                  description: 'The position of the piece you are moving, do not return positions other than enum',
-                  enum: ['a1', 'b2', 'c3', 'd4', 'e5', 'f6', 'g7', 'h8'],
-                },
-                pieceTarget: {
-                  type: 'string',
-                  // "description": "你移動棋子的目標位置，禁止回傳enum以外位置",
-                  description: 'The target position of the piece you are moving, do not return positions other than enum',
-                  enum: ['a1', 'b2', 'c3', 'd4', 'e5', 'f6', 'g7', 'h8'],
-                },
-                piecePromotion: {
-                  type: 'string',
-                  // "description": "你移動棋子的升變類型，禁止回傳enum以外類型",
-                  description: 'The promotion type of the piece you are moving, do not return types other than enum',
-                  enum: ['Q', 'R', 'B', 'N', ''], // 空字串代表沒有升變
-                },
-                specialMove: {
-                  type: 'string',
-                  description: '特殊移動，禁止回傳列舉以外移動',
-                  enum: ['O-O', 'O-O-O', ''], // 空字串代表沒有特殊移動
-                },
-              },
-              required: ['pieceType', 'pieceAction', 'piecePosition', 'pieceTarget'],
-              // "required": ["startNotation", "MovedNotation"],
-            },
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 100,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_OPEN_API_KEY}`,
-        },
-      })
-        .then((response) => {
-          console.log(response);
-          const messageContent = response.data.choices[0].message.content;
-          const functionCall = response.data.choices[0].message.function_call;
-          this.aiMove(functionCall);
-        })
-        .catch((error) => {
-          console.error(error);
-        });
-    },
-    aiMove(result) {
-      const rsg = JSON.parse(result.arguments);
-
-      const chieceType = rsg.pieceType === this.pieces.pawn ? '' : rsg.pieceType;
-      const chieceAction = rsg.pieceAction;
-      let chiecePosition = rsg.piecePosition;
-      let chieceTarget = rsg.pieceTarget;
-
-      console.log(rsg);
-
-      this.api.moveStep += `${chieceType + chiecePosition + chieceAction + chieceTarget} `;
-
-      chiecePosition = this.convertToAlgebraic(chiecePosition);
-      chieceTarget = this.convertToAlgebraic(chieceTarget);
-
-      this.clickPiece(chiecePosition.row, chiecePosition.col);
-
-      this.movePiece(chieceTarget.col, chieceTarget.row, chiecePosition.row, chiecePosition.col);
-
-      return false;
-
-      const chiecePromotion = rsg.piecePromotion;
-      const { specialMove } = rsg;
-
-      const position = chiecePosition.split('');
-      const targePosition = chieceTarget.split('');
-      const col = this.wordToCol[position[0]];
-      const row = 8 - position[1];
-      const targetCol = this.wordToCol[targePosition[0]];
-      const targetRow = 8 - targePosition[1];
-
-      this.board[row][col] = null; // 清除原位置
-      this.board[targetRow][targetCol] = {
-        type: chieceType,
-        color: 'black',
-      }; // 移動棋子
-
-      let word = chieceType + chieceAction + chieceTarget;
-      word = word.replace(this.pieces.pawn, '');
-      this.api.moveStep += `${word} `;
-      this.whoesTurn = 'white';
-
-      // let words = resultMsg.split('...');
-      // let word = words[words.length - 1].trim();
-
-      // console.log(word.split(''));
-
-      // // 目標位置
-      // let targets = {
-      //   "type": "",
-      //   "row": "",
-      //   "col": "",
-      // };
-
-      // targets['type'] = word[1];
-      // let targetRow = 8 - word[word.length - 1];
-      // let targetCol = this.wordToCol[word[word.length - 2]];
-
-      // console.log(targetRow);
-      // console.log(targetCol);
-
-      //   // 起始位置
-      //   for (let row = 0; row < this.size; row++) {
-      //     for (let col = 0; col < this.size; col += 1) {
-      //       // 長度為 2 的話，必定是士兵移動
-      //       if (word.length === 2) {
-      //         if (this.board[row][col] != null && this.board[row][col].type === this.pieces.pawn) {
-      //           let availableMoves = this.getAvailableMoves(col, row);
-
-      //           // 判斷哪個棋子可以移動到目標位置
-      //           if (availableMoves.some((move) => move.row === targetRow && move.col === targetCol)) {
-      //             this.board[row][col] = null;
-      //             this.board[targetRow][targetCol] = {
-      //               type: this.pieces.pawn,
-      //               color: 'black',
-      //             };
-      //           }
-      //         }
-      //       }
-      //     }
-      //   }
-      // // 長度為3，必為士兵以外
-    },
+    //   if (responseData.function_calls && responseData.function_calls.length > 0) {
+    //     const functionCall = responseData.function_calls[0];
+    //     if (functionCall.name === 'tell_joke') {
+    //       console.log('Telling a joke...');
+    //       // Call your tell_joke function here
+    //     }
+    //   }
+    // },
     setNotation(originPosition, isEat) {
       const { col } = this.selectedStatus.position;
       const { row } = this.selectedStatus.position;
@@ -332,8 +165,6 @@ export default {
       const action = isEat ? 'x' : '';
 
       if (piece === this.pieces.pawn) piece = '';
-
-      this.api.moveStep += `${round}. ${piece}${originPosition}${action}${targetPostion} `;
     },
     initialBoardState() {
       // 初始化棋盤
@@ -370,86 +201,53 @@ export default {
     },
     // 移動棋子
     movePiece(
-      x,
-      y,
+      col,
+      row,
       originCol = this.selectedStatus.position.col,
       originRow = this.selectedStatus.position.row,
     ) {
       const originPiece = this.board[originRow][originCol];
-
-      // 獲取目標棋子
-      const targetPiece = this.board[y][x];
-
-      // 是否為吃子
+      const targetPiece = this.board[row][col];
       const isEat = targetPiece !== null;
 
-      // 檢查目標是否在可移動範圍內
-      let canMove = false;
+      // 判斷移動是否合法
       this.validMoves.forEach((vaildDir) => {
-        if (vaildDir.row === y && vaildDir.col === x) {
-          this.board[originRow][originCol] = null; // 清除原位置
-          this.board[y][x] = originPiece; // 移動棋子
-          this.selectedStatus.position = {
-            row: y,
-            col: x,
-          }; // 更新選擇棋子位置
+        if (vaildDir.row === row && vaildDir.col === col) {
+          // 移動棋子
+          this.board[originRow][originCol] = null;
+          this.board[row][col] = originPiece;
+          this.selectedStatus.position = { row, col };
 
-          // 白方下完，換AI回合
+          // 判斷輸贏
+          if (this.checkWin()) {
+            alert(`${originPiece.color === 'white' ? '白方' : '黑方'}勝利！，請刷新頁面重玩。`);
+            return;
+          }
+
           if (this.whoesTurn === 'white') {
-            // 記譜
             const originPosition = this.convertToAlgebraicNotation(originRow, originCol);
             this.setNotation(originPosition, isEat);
-
-            // AI回合
-            this.aiTurn();
-          }
-
-          // 黑方下完，增加回合數
-          if (this.whoesTurn === 'black') {
+            this.whoesTurn = 'black';
+            // 在玩家（白方）移動後，觸發 AI（黑方）走子
+            this.$nextTick(() => {
+              this.makeAIMove();
+            });
+          } else if (this.whoesTurn === 'black') {
             this.$store.commit('addRound');
+            this.whoesTurn = 'white';
           }
 
-          // 王被吃掉，遊戲結束
-          if (targetPiece != null && targetPiece.type === this.pieces.king) {
-            alert(`${this.whoesTurn}win!`);
-            canMove = true;
-          }
-
-          // 判斷是否成功將軍
-          if (this.checkWin()) {
-            alert(`${this.whoesTurn}win!`);
-            canMove = true;
-          }
-
-          // 清除選中狀態
           this.cleanSelected();
-
-          // 切換回合
-          this.whoesTurn = this.whoesTurn === 'white' ? 'black' : 'white';
-
-          canMove = true;
-
-          // let step = this.api.step;
-          // // if (Array.isArray(step[this.round])) {
-          // //   step[this.round].push([row, col]);
-          // // } else {
-          // //   step[this.round] = [];
-          // //   step[this.round].push([row, col]);
-          // // }
-          // // this.api.step = step;
-
-          // step[this.round] = {
-          //   piece: this.selectedStatus.piece,
-          //   position: [ row, this.colToWord[col] ]
-          // }
-
-          // console.log(step);
         }
-        return canMove;
       });
     },
     // 點擊棋子
     clickPiece(row, col) {
+      // 如果是 AI 的回合（黑色方），不允許玩家操作
+      if (this.whoesTurn === 'black' && this.board[row][col]?.color !== 'black') {
+        return;
+      }
+
       // 選擇旗子
       if (
         // 有點到棋子，無選擇棋子狀態
@@ -463,20 +261,9 @@ export default {
           && this.board[row][col].color === this.selectedStatus.piece.color
         )
       ) {
-        // 判斷回合
-        switch (this.whoesTurn) {
-          case 'white':
-            if (this.board[row][col].color === 'black') {
-              return;
-            }
-            break;
-          case 'black':
-            if (this.board[row][col].color === 'white') {
-              return;
-            }
-            break;
-          default:
-            break;
+        // 只允許移動當前回合方的棋子
+        if (this.board[row][col].color !== this.whoesTurn) {
+          return;
         }
 
         // 加入選中狀態
@@ -519,123 +306,157 @@ export default {
     // 判斷是否為有效移動(className用)
     classMove(row, col) {
       let canMove = false;
+      // 檢查是否有選中的棋子
+      if (!this.selectedStatus.piece) {
+        return false;
+      }
+      
+      // 檢查目標位置的棋子
+      const targetPiece = this.board[row][col];
+      // 如果目標位置有棋子且顏色相同，則不顯示移動樣式
+      if (targetPiece && targetPiece.color === this.selectedStatus.piece.color) {
+        return false;
+      }
+
+      // 檢查是否在有效移動列表中
       this.validMoves.forEach((dir) => {
         if (dir.row === row && dir.col === col) {
-          canMove = true;
+          // 如果是國王，需要額外檢查目標位置是否安全
+          if (this.selectedStatus.piece.type === this.pieces.king) {
+            canMove = !this.isSquareUnderAttack(row, col, this.selectedStatus.piece.color);
+          } else {
+            canMove = true;
+          }
         }
       });
 
       return canMove;
     },
     // 定義棋子可以移動的範圍
-    getAvailableMoves(x, y) {
-      const { color } = this.board[y][x];
-      const { type } = this.board[y][x];
+    getAvailableMoves(col, row) {
+      const piece = this.board[row][col];
+      const { type } = piece;
 
       // 檢查選取棋子類型
       switch (type) {
         case this.pieces.king:
-          return this.getAvailableMovesForKing(x, y, color);
+          return this.getAvailableMovesForKing(col, row);
         case this.pieces.queen:
-          return this.getAvailableMovesForQueen(x, y, color);
+          return this.getAvailableMovesForQueen(col, row);
         case this.pieces.rook:
-          return this.getAvailableMovesForRook(x, y, color);
+          return this.getAvailableMovesForRook(col, row);
         case this.pieces.knight:
-          return this.getAvailableMovesForKnight(x, y, color);
+          return this.getAvailableMovesForKnight(col, row);
         case this.pieces.bishop:
-          return this.getAvailableMovesForBishop(x, y, color);
+          return this.getAvailableMovesForBishop(col, row);
         case this.pieces.pawn:
-          return this.getAvailableMovesForPawn(x, y, color);
+          return this.getAvailableMovesForPawn(col, row);
         default:
+          // 處理未知的棋子類型
+          console.warn(`未知的棋子類型: ${piece.type}`);
           return [];
       }
     },
     // 定義士兵可以移動的範圍
-    getAvailableMovesForPawn(x, y, color) {
-      let dirs = null;
-      const blackDirs = [[0, 1], [0, 2], [1, 1], [-1, 1]];
-      const whiteDirs = [[0, -1], [0, -2], [1, -1], [-1, -1]];
+    getAvailableMovesForPawn(col, row) {
+      const { color } = this.board[row][col];
+      let directions = null;
+      const blackDirections = [
+        { dx: 0, dy: 1 }, { dx: 0, dy: 2 },
+        { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
+      ];
+      const whiteDirections = [
+        { dx: 0, dy: -1 }, { dx: 0, dy: -2 },
+        { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+      ];
       const moves = [];
 
       // 檢查顏色
       if (color === 'black') {
-        dirs = blackDirs;
+        directions = blackDirections;
       } else if (color === 'white') {
-        dirs = whiteDirs;
+        directions = whiteDirections;
       }
 
       // 檢查每個方向
-      dirs.forEach((dir) => {
+      directions.forEach(({ dx, dy }) => {
         // 計算座標
-        const nx = x + dir[0];
-        const ny = y + dir[1];
+        const newCol = col + dx;
+        const newRow = row + dy;
 
         // 檢查是否在棋盤範圍內
-        if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
+        if (this.isValidPosition(newCol, newRow)) {
           // 獲取目標棋子
-          const target = this.board[ny][nx];
+          const targetPiece = this.board[newRow][newCol];
 
           // 步數為2時，檢查是否第一次移動
-          if (Math.abs(dir[1]) === 2) {
-            if (color === 'white' && y !== 6) {
+          if (Math.abs(dy) === 2) {
+            if (color === 'white' && row !== 6) {
               return;
             }
-            if (color === 'black' && y !== 1) {
+            if (color === 'black' && row !== 1) {
               return;
             }
           }
 
           // 檢查是否為吃子
-          if (Math.abs(dir[0]) === 1 && Math.abs(dir[1]) === 1) {
-            if (target === null || target.color === color) {
+          if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
+            if (targetPiece === null || targetPiece.color === color) {
               return;
             }
-          } else if (Math.abs(dir[0]) === 0 && Math.abs(dir[1]) === 1 && target != null) {
+          } else if (Math.abs(dx) === 0 && Math.abs(dy) === 1 && targetPiece != null) {
             // 檢查前方有異色棋子時，不能移動
             return;
-          } else if (Math.abs(dir[0]) === 0 && Math.abs(dir[1]) === 2) {
-            // 移動兩步時，前方兩格都要檢查
-            if (target != null || this.board[ny - 1][nx] != null) {
-              return;
+          } else if (Math.abs(dx) === 0 && Math.abs(dy) === 2) {
+            // 移動兩步時，先檢查目標位置是否有棋子
+            if (targetPiece != null) {
+              if (color === 'white' && this.board[newRow + 1][newCol] != null) {
+                return;
+              }
+
+              if (color === 'black' && this.board[newRow - 1][newCol] != null) {
+                return;
+              }
             }
           }
 
           // 加入可以移動的座標
-          moves.push({ row: ny, col: nx });
+          moves.push({ row: newRow, col: newCol });
         }
       });
 
       return moves;
     },
     // 定義主教可以移動的範圍
-    getAvailableMovesForBishop(x, y, color) {
-      const dirs = [[1, 1], [-1, 1], [1, -1], [-1, -1]]; // 定義方向
+    getAvailableMovesForBishop(col, row) {
+      const { color } = this.board[row][col];
+      const directions = [
+        { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
+        { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+      ];
       const moves = [];
 
       // 檢查每個方向
-      dirs.forEach((dir) => {
-        // 計算座標
-        let nx = x;
-        let ny = y;
-
-        // 檢查是否可以移動
+      directions.forEach(({ dx, dy }) => {
+        let newCol = col;
+        let newRow = row;
         let canMove = true;
 
         while (canMove) {
-          nx += dir[0];
-          ny += dir[1];
+          newCol += dx;
+          newRow += dy;
 
-          if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
+          if (this.isValidPosition(newCol, newRow)) {
             // 獲取目標棋子
-            const target = this.board[ny][nx];
+            const targetPiece = this.board[newRow][newCol];
 
             // 檢查目標方格是否為空或異色
-            if (target === null || target.color !== color) {
-              moves.push({ row: ny, col: nx });
+            if (targetPiece === null || targetPiece.color !== color) {
+              moves.push({ row: newRow, col: newCol });
             }
 
             // 檢查目標方格是否為空
-            if (target != null) {
+            if (targetPiece != null) {
               canMove = false;
             }
           } else {
@@ -647,27 +468,30 @@ export default {
       return moves;
     },
     // 定義騎士可以移動的範圍
-    getAvailableMovesForKnight(x, y, color) {
-      const dirs = [[1, 2], [-1, 2], [1, -2], [-1, -2], [2, 1], [-2, 1], [2, -1], [-2, -1]]; // 定義方向
+    getAvailableMovesForKnight(col, row) {
+      const { color } = this.board[row][col];
+      const directions = [
+        { dx: 1, dy: 2 }, { dx: -1, dy: 2 },
+        { dx: 1, dy: -2 }, { dx: -1, dy: -2 },
+        { dx: 2, dy: 1 }, { dx: -2, dy: 1 },
+        { dx: 2, dy: -1 }, { dx: -2, dy: -1 },
+      ];
       const moves = [];
 
       // 檢查每個方向
-      dirs.forEach((dir) => {
+      directions.forEach(({ dx, dy }) => {
         // 計算座標
-        const nx = x + dir[0];
-        const ny = y + dir[1];
-
-        // 檢查是否可以移動
-        // const canMove = true;
+        const newCol = col + dx;
+        const newRow = row + dy;
 
         // 檢查是否在棋盤範圍內
-        if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
+        if (this.isValidPosition(newCol, newRow)) {
           // 獲取目標棋子
-          const target = this.board[ny][nx];
+          const targetPiece = this.board[newRow][newCol];
 
           // 檢查目標方格是否為空或異色
-          if (target === null || target.color !== color) {
-            moves.push({ row: ny, col: nx });
+          if (targetPiece === null || targetPiece.color !== color) {
+            moves.push({ row: newRow, col: newCol });
           }
         }
       });
@@ -675,34 +499,35 @@ export default {
       return moves;
     },
     // 定義車可以移動的範圍
-    getAvailableMovesForRook(x, y, color) {
-      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]]; // 定義方向
+    getAvailableMovesForRook(col, row) {
+      const { color } = this.board[row][col];
+      const directions = [
+        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+      ];
       const moves = [];
 
       // 檢查每個方向
-      dirs.forEach((dir) => {
-        // 計算座標
-        let nx = x;
-        let ny = y;
-
-        // 檢查是否可以移動
+      directions.forEach(({ dx, dy }) => {
+        let newCol = col;
+        let newRow = row;
         let canMove = true;
 
         while (canMove) {
-          nx += dir[0];
-          ny += dir[1];
+          newCol += dx;
+          newRow += dy;
 
-          if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
+          if (this.isValidPosition(newCol, newRow)) {
             // 獲取目標棋子
-            const target = this.board[ny][nx];
+            const targetPiece = this.board[newRow][newCol];
 
             // 檢查目標方格是否為空或異色
-            if (target === null || target.color !== color) {
-              moves.push({ row: ny, col: nx });
+            if (targetPiece === null || targetPiece.color !== color) {
+              moves.push({ row: newRow, col: newCol });
             }
 
             // 檢查目標方格是否為空
-            if (target != null) {
+            if (targetPiece != null) {
               canMove = false;
             }
           } else {
@@ -714,34 +539,37 @@ export default {
       return moves;
     },
     // 定義皇后可以移動的範圍
-    getAvailableMovesForQueen(x, y, color) {
-      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]; // 定義方向
+    getAvailableMovesForQueen(col, row) {
+      const { color } = this.board[row][col];
+      const directions = [
+        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+        { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
+        { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+      ];
       const moves = [];
 
       // 檢查每個方向
-      dirs.forEach((dir) => {
-        // 計算座標
-        let nx = x;
-        let ny = y;
-
-        // 檢查是否可以移動
+      directions.forEach(({ dx, dy }) => {
+        let newCol = col;
+        let newRow = row;
         let canMove = true;
 
         while (canMove) {
-          nx += dir[0];
-          ny += dir[1];
+          newCol += dx;
+          newRow += dy;
 
-          if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
+          if (this.isValidPosition(newCol, newRow)) {
             // 獲取目標棋子
-            const target = this.board[ny][nx];
+            const targetPiece = this.board[newRow][newCol];
 
             // 檢查目標方格是否為空或異色
-            if (target === null || target.color !== color) {
-              moves.push({ row: ny, col: nx });
+            if (targetPiece === null || targetPiece.color !== color) {
+              moves.push({ row: newRow, col: newCol });
             }
 
             // 檢查目標方格是否為空
-            if (target != null) {
+            if (targetPiece != null) {
               canMove = false;
             }
           } else {
@@ -753,34 +581,40 @@ export default {
       return moves;
     },
     // 定義王可以移動的範圍
-    getAvailableMovesForKing(x, y, color) {
-      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]; // 定義方向
+    getAvailableMovesForKing(col, row) {
+      const { color } = this.board[row][col];
+      const directions = [
+        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+        { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
+        { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+      ];
       const moves = [];
 
-      // 檢查每個方向
-      dirs.forEach((dir) => {
+      // 使用陣列方法替代for循環
+      directions.forEach(({ dx, dy }) => {
         // 計算座標
-        const nx = x + dir[0];
-        const ny = y + dir[1];
-
-        // 檢查是否可以移動
-        // const canMove = true;
+        const newRow = row + dy;
+        const newCol = col + dx;
 
         // 檢查是否在棋盤範圍內
-        if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size) {
+        if (this.isValidPosition(newRow, newCol)) {
           // 獲取目標棋子
-          const target = this.board[ny][nx];
+          const targetPiece = this.board[newRow][newCol];
 
-          // 檢查目標方格是否為空或異色
-          if (target === null || target.color !== color) {
-            moves.push({ row: ny, col: nx });
+          // 檢查目標位置是否為空或者是敵方棋子
+          if (targetPiece === null || targetPiece.color !== color) {
+            // 檢查目標位置是否安全（不在對方的攻擊範圍內）
+            if (!this.isSquareUnderAttack(newRow, newCol, color)) {
+              moves.push({ row: newRow, col: newCol });
+            }
           }
         }
       });
 
       return moves;
     },
-    // 判斷輸贏
+    // 判斷輸贏(移動棋子後，切換回合前進行)
     checkWin() {
       // 獲取對方顏色
       const color = this.whoesTurn === 'white' ? 'black' : 'white';
@@ -788,69 +622,60 @@ export default {
       // 獲取對方王的位置
       const kingPosition = this.findKing(color);
 
-      // 獲取對方王可以移動的範圍
-      let kingmoves = this.getAvailableMoves(kingPosition.col, kingPosition.row);
-
-      // 獲取移動後棋子可移動範圍
-      const selectedPosition = this.selectedStatus.position;
-      const pieceMoves = this.getAvailableMoves(selectedPosition.col, selectedPosition.row);
-
-      // 是否成功將軍
-      let check = false;
-
-      // 檢查當下移動的棋子是否可以吃掉王
-      pieceMoves.some((move) => {
-        if (move.row === kingPosition.row && move.col === kingPosition.col) {
-          check = true;
-        }
-        return check;
-      });
-
-      if (check === false) {
-        return false;
+      // 如果對方王不存在，遊戲結束
+      if (!kingPosition) {
+        return true; // 對方王不存在，對方輸贏
       }
 
-      check = false;
+      // 檢查國王是否被將軍
+      const isKingInCheck = this.isSquareUnderAttack(kingPosition.row, kingPosition.col, color);
+
+      if (!isKingInCheck) {
+        return false; // 如果國王沒有被將軍，遊戲繼續
+      }
+
+      // 檢查是否是將死
+      // 1. 檢查國王是否有安全的移動位置
+      const kingMoves = this.getAvailableMovesForKing(kingPosition.col, kingPosition.row);
+      if (kingMoves.length > 0) {
+        return false; // 國王還可以移動，不是將死
+      }
+
+      // 2. 檢查其他棋子是否能解救國王
       for (let row = 0; row < this.size; row += 1) {
         for (let col = 0; col < this.size; col += 1) {
           const piece = this.board[row][col];
-
-          // 判斷對方是否可以吃掉我方移動後的棋子
-          if (piece != null && piece.color === color) {
+          if (piece && piece.color === color && piece.type !== this.pieces.king) {
+            // 獲取這個棋子的所有可能移動
             const moves = this.getAvailableMoves(col, row);
+            
+            // 檢查每個可能的移動是否能解救國王
+            if (!moves.some((move) => {
+              // 暫存原始位置的棋子
+              const originalPiece = this.board[move.row][move.col];
+              const currentPiece = this.board[row][col];
+              
+              // 模擬移動
+              this.board[row][col] = null;
+              this.board[move.row][move.col] = currentPiece;
+              
+              // 檢查移動後國王是否安全
+              const isSafe = !this.isSquareUnderAttack(kingPosition.row, kingPosition.col, color);
 
-            if (
-              moves.some(
-                (move) => (
-                  move.row === this.selectedStatus.position.row
-                    && move.col === this.selectedStatus.position.col
-                ),
-              )) {
-              return false;
+              // 還原棋盤
+              this.board[row][col] = currentPiece;
+              this.board[move.row][move.col] = originalPiece;
+              
+              return isSafe; // 如果找到安全的移動，some() 會返回 true，我們需要取反
+            })) {
+              return false; // 找到一個可以解救國王的移動，不是將死
             }
-          }
-
-          // 判斷對方國王移動範圍是否都在我方任何棋的吃棋範圍內
-          if (piece != null && piece.color !== color) {
-            const moves = this.getAvailableMoves(col, row);
-
-            // 有符合國王移動範圍就把國王移動範圍過濾掉
-            kingmoves = kingmoves.filter((kingMove) => {
-              if (moves.some((move) => move.row === kingMove.row && move.col === kingMove.col)) {
-                return false;
-              }
-              return true;
-            });
           }
         }
       }
 
-      // 如果國王移動範圍為空，則表示對方無法移動，判斷為輸
-      if (kingmoves.length === 0) {
-        return true;
-      }
-
-      return check;
+      // 如果所有檢查都通過，確認是將死
+      return true;
     },
     // 獲取王的位置
     findKing(color) {
@@ -879,12 +704,235 @@ export default {
         col: this.wordToCol[col],
       };
     },
+    // 生成FEN格式棋盤狀態（用於Stockfish）
+    generateFEN() {
+      let fen = '';
+      let emptyCount = 0;
+
+      // 遍歷棋盤
+      for (let row = 0; row < this.size; row += 1) {
+        for (let col = 0; col < this.size; col += 1) {
+          const piece = this.board[row][col];
+          if (piece === null) {
+            emptyCount += 1;
+          } else {
+            // 如果之前有空格，先加入數字
+            if (emptyCount > 0) {
+              fen += emptyCount;
+              emptyCount = 0;
+            }
+            // 添加棋子符號
+            let pieceSymbol = '';
+            switch (piece.type) {
+              case this.pieces.pawn:
+                pieceSymbol = 'p';
+                break;
+              case this.pieces.rook:
+                pieceSymbol = 'r';
+                break;
+              case this.pieces.knight:
+                pieceSymbol = 'n';
+                break;
+              case this.pieces.bishop:
+                pieceSymbol = 'b';
+                break;
+              case this.pieces.queen:
+                pieceSymbol = 'q';
+                break;
+              case this.pieces.king:
+                pieceSymbol = 'k';
+                break;
+              default:
+                // 處理未知的棋子類型
+                console.warn(`未知的棋子類型: ${piece.type}`);
+                break;
+            }
+            // 白方用大寫
+            if (piece.color === 'white') {
+              pieceSymbol = pieceSymbol.toUpperCase();
+            }
+            fen += pieceSymbol;
+          }
+        }
+        // 處理行尾的空格
+        if (emptyCount > 0) {
+          fen += emptyCount;
+          emptyCount = 0;
+        }
+        // 除了最後一行，每行加上'/'
+        if (row < this.size - 1) {
+          fen += '/';
+        }
+      }
+
+      // 添加當前回合方
+      fen += ` ${this.whoesTurn === 'white' ? 'w' : 'b'}`;
+      
+      // 添加王車易位權限（這裡簡化處理）
+      fen += ' KQkq';
+      
+      // 添加過路兵位置（這裡簡化處理）
+      fen += ' -';
+      
+      // 添加半回合計數和全回合數
+      fen += ' 0 1';
+
+      return fen;
+    },
+    // 檢查位置是否在棋盤內
+    isValidPosition(row, col) {
+      if (row >= 0 && row < this.size && col >= 0 && col < this.size) {
+        return true;
+      }
+
+      return false;
+    },
+    // 檢查某個格子是否在對方的攻擊範圍內
+    isSquareUnderAttack(row, col, kingColor) {
+      // 檢查每個格子
+      for (let checkRow = 0; checkRow < this.size; checkRow += 1) {
+        for (let checkCol = 0; checkCol < this.size; checkCol += 1) {
+          const piece = this.board[checkRow][checkCol];
+          if (piece && piece.color !== kingColor) {
+            // 獲取棋子的攻擊範圍
+            let moves = [];
+            switch (piece.type) {
+              case this.pieces.queen:
+                // 皇后的攻擊範圍和移動範圍相同
+                moves = this.getAvailableMovesForQueen(checkCol, checkRow);
+                break;
+              case this.pieces.rook:
+                // 車的攻擊範圍和移動範圍相同
+                moves = this.getAvailableMovesForRook(checkCol, checkRow);
+                break;
+              case this.pieces.knight:
+                // 騎士的攻擊範圍和移動範圍相同
+                moves = this.getAvailableMovesForKnight(checkCol, checkRow);
+                break;
+              case this.pieces.bishop:
+                // 主教的攻擊範圍和移動範圍相同
+                moves = this.getAvailableMovesForBishop(checkCol, checkRow);
+                break;
+              case this.pieces.pawn:
+                // 兵的攻擊範圍只有斜向
+                const pawnAttackDirections = piece.color === 'black' 
+                  ? [{ dx: 1, dy: 1 }, { dx: -1, dy: 1 }]  // 黑兵的攻擊方向
+                  : [{ dx: 1, dy: -1 }, { dx: -1, dy: -1 }]; // 白兵的攻擊方向
+                
+                pawnAttackDirections.forEach(({ dx, dy }) => {
+                  const newRow = checkRow + dy;
+                  const newCol = checkCol + dx;
+                  if (this.isValidPosition(newRow, newCol)) {
+                    moves.push({ row: newRow, col: newCol });
+                  }
+                });
+                break;
+              case this.pieces.king:
+                // 王的攻擊範圍和移動範圍相同（但不考慮是否安全）
+                const kingDirections = [
+                  { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+                  { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+                  { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
+                  { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+                ];
+                kingDirections.forEach(({ dx, dy }) => {
+                  const newRow = checkRow + dy;
+                  const newCol = checkCol + dx;
+                  if (this.isValidPosition(newRow, newCol)) {
+                    moves.push({ row: newRow, col: newCol });
+                  }
+                });
+                break;
+              default:
+                console.warn(`未知的棋子類型: ${piece.type}`);
+                break;
+            }
+
+            // 檢查是否有任何移動可以到達目標格子
+            if (moves.some((move) => move.row === row && move.col === col)) {
+              return true; // 格子在攻擊範圍內
+            }
+          }
+        }
+      }
+      return false; // 格子安全
+    },
+    // AI走棋
+    async makeAIMove() {
+      if (!this.stockfishReady) {
+        console.error('Stockfish引擎未就緒');
+        return;
+      }
+
+      try {
+        // 生成當前局面的FEN
+        const fen = this.generateFEN();
+        // console.log('當前局面FEN:', fen);
+        
+        // 設置當前局面
+        await stockfishService.setPosition(fen);
+        
+        // 獲取最佳走法
+        const bestMove = await stockfishService.getBestMove(15); // 搜索深度15
+        // console.log('Stockfish建議走法:', bestMove);
+
+        if (bestMove && bestMove.length >= 4) {
+          // 解析走法
+          const fromSquare = this.parseSquare(bestMove.substring(0, 2));
+          const toSquare = this.parseSquare(bestMove.substring(2, 4));
+          
+          // 為AI移動設置選中狀態
+          this.$store.commit('setSelectedStatus', {
+            piece: this.board[fromSquare.row][fromSquare.col],
+            position: { row: fromSquare.row, col: fromSquare.col },
+          });
+          
+          // 設置有效移動
+          this.$store.commit('setValidMoves', [{
+            row: toSquare.row,
+            col: toSquare.col,
+          }]);
+          
+          // 執行移動
+          this.movePiece(toSquare.col, toSquare.row);
+        }
+      } catch (error) {
+        console.error('AI走子時發生錯誤:', error);
+      }
+    },
+
+    // 解析棋盤座標
+    parseSquare(algebraic) {
+      const col = algebraic.charCodeAt(0) - 'a'.charCodeAt(0);
+      const row = 8 - parseInt(algebraic[1], 10);
+      return { row, col };
+    },
   },
 };
 </script>
 <style scoped>
-.selected {
-  background-color: #e0872f98;
+/* 座標標籤樣式 */
+.coordinate-label {
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+  color: #AD8B73;
+  text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+.row-label {
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1em;
+}
+
+.col-label {
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1em;
 }
 
 /* 棋盤最外層樣式 */
@@ -892,26 +940,27 @@ export default {
   display: flex;
   flex-wrap: wrap;
   width: 800px;
-  /* 可以自行調整 */
   height: 800px;
   margin: auto;
-  border: 1rem solid rgb(239, 183, 160);
-  /* 可以自行調整 */
-  /* background-color: #e0872f98; */
+  border: 1rem solid #AD8B73;
+  padding: 15px;
+  box-sizing: border-box;
+  background-color: #FFFBE9;
 }
 
 /* 水平網格 */
 .chess-row {
   display: flex;
   width: 100%;
+  height: 12.5%;
+  position: relative; /* 為了座標標籤的定位 */
 }
 
 /* 垂直網格 */
 .chess-col {
   box-sizing: border-box;
   width: 12.5%;
-  height: 0;
-  padding-bottom: 12.5%;
+  height: 100%;
   position: relative;
 }
 
@@ -927,23 +976,108 @@ export default {
   height: 100%;
 }
 
+/* 棋盤格子配色 */
 .chess-row:nth-of-type(odd) .chess-col:nth-child(odd) {
-  background-color: rgb(210, 154, 129);
+  background-color: #E3CAA5;
 }
 
 .chess-row:nth-of-type(odd) .chess-col:nth-child(even) {
-  background-color: rgb(152, 123, 103);
+  background-color: #CEAB93;
 }
 
 .chess-row:nth-of-type(even) .chess-col:nth-child(odd) {
-  background-color: rgb(152, 123, 103);
+  background-color: #CEAB93;
 }
 
 .chess-row:nth-of-type(even) .chess-col:nth-child(even) {
-  background-color: rgb(210, 154, 129);
+  background-color: #E3CAA5;
 }
 
-/* 響應 */
+/* 選中狀態 */
+.selected {
+  background-color: #AD8B73 !important;
+  box-shadow: inset 0 0 15px rgba(173, 139, 115, 0.9),
+              0 0 10px rgba(173, 139, 115, 0.7);
+  position: relative;
+}
+
+.selected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 3px solid #AD8B73;
+  animation: selectedPulse 1.5s infinite;
+}
+
+@keyframes selectedPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+}
+
+/* 可移動空格樣式 */
+.canMove {
+  width: 50px;
+  height: 50px;
+  background-color: #AD8B73;
+  opacity: 0.8;
+  border-radius: 50%;
+  animation: movePulse 1.5s infinite;
+}
+
+/* 可吃子樣式 */
+.canEat {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid #AD8B73;
+  animation: eatPulse 1.5s infinite;
+}
+
+@keyframes movePulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}
+
+@keyframes eatPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+}
+
+/* 響應式設計 */
 @media (max-width: 800px) {
   .chess-board {
     width: 600px;
@@ -957,31 +1091,4 @@ export default {
     height: 400px;
   }
 }
-
-/* 可移動空格樣式 */
-.canMove {
-  width: 50px;
-  height: 50px;
-  background-color: #e5d7cbab;
-  border-radius: 50%;
-}
-
-.canEat {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 10px solid #cccccc54;
-}
-
-/* .::before {
-  content: "";
-  position: absolute;
-  top: -10px;
-  left: -10px;
-  right: -10px;
-  bottom: -10px;
-  border-radius: 50%;
-  border: 10px solid #f00;
-} */
 </style>

@@ -12,4 +12,26 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    port: 3001,
+    fs: {
+      strict: false,
+    },
+  },
+  optimizeDeps: {
+    exclude: ['stockfish.js'],
+  },
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          stockfish: ['stockfish.js'],
+        },
+      },
+    },
+  },
+  worker: {
+    format: 'es',
+  },
 });
