@@ -28,3 +28,12 @@ coverage
 *.sw?
 
 .env
+.env.docker
+# Nginx 配置
+nginx.conf
+.env.nginx
+ssl/
+
+# 但保留模板文件
+!nginx.conf.template
+!.env.nginx.template

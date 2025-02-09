@@ -1,5 +1,5 @@
 {
-  "name": "chess-with-vue",
+  "name": "chess-in-vue",
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",

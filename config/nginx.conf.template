@@ -1,0 +1,77 @@
+# 設置工作進程數
+worker_processes auto;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    # 基本設置
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # 增加請求頭大小限制
+    client_header_buffer_size 64k;
+    large_client_header_buffers 4 64k;
+
+    # 增加 Cookie 大小限制
+    proxy_buffer_size 64k;
+    proxy_buffers 4 64k;
+    proxy_busy_buffers_size 64k;
+
+    # 其他優化設置
+    sendfile        on;
+    keepalive_timeout  65;
+    gzip  on;
+
+    # 添加 MIME 類型
+    types {
+        application/wasm wasm;
+    }
+
+    server {
+        # 使用環境變量設置端口
+        listen       ${NGINX_PORT};
+        server_name  ${NGINX_SERVER_NAME};
+
+        # 根目錄設置
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+
+        # 處理單頁應用的路由
+        location / {
+            try_files $uri $uri/ /index.html;
+            
+            # 添加安全相關頭
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "no-referrer-when-downgrade" always;
+            add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+
+            # 支援反向代理
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # 設置 Stockfish.js 和 WASM 文件的 headers
+        location ~ \.(wasm|js)$ {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
+            add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range';
+            
+            # 禁用緩存以確保始終獲取最新版本
+            add_header Cache-Control no-cache;
+            expires 0;
+        }
+
+        # 設置其他靜態資源的緩存
+        location ~* \.(css|png|jpg|jpeg|gif|ico)$ {
+            expires max;
+            add_header Cache-Control public;
+        }
+    }
+}
