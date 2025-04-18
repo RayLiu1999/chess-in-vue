@@ -19,9 +19,6 @@ RUN npm run build
 # 使用輕量級的 nginx 來服務靜態文件
 FROM nginx:alpine
 
-# 複製自定義的 nginx 配置
-# COPY nginx.conf /etc/nginx/nginx.conf
-
 # 複製構建產物到 nginx 目錄
 COPY --from=builder /app/dist /usr/share/nginx/html
 
