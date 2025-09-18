@@ -28,6 +28,38 @@ Vue 國際象棋是一款使用 Vue 3 和 Vite 開發的網頁版國際象棋遊
 - **國際象棋引擎**: Stockfish.js
 - **容器化**: Docker
 
+### 專案架構
+
+```mermaid
+graph TD
+  subgraph 用戶端 [Browser]
+    A["<span style='color:#b8860b'>使用者</span>"] --> B[Vue.js 應用程式]
+  end
+
+  subgraph Vue.js 應用程式 [src/]
+    B --> C[main.js 入口點]
+    C --> D[App.vue 根組件]
+    D -- 使用 --> F[store.js Vuex 狀態管理]
+    D --> E[ChessBoard.vue]
+    E --> G[ChessPiece.vue / pieces/*.vue]
+    E -- 互動 --> I[stockfish.service.js]
+  end
+
+  subgraph 外部服務 [External Services]
+    I -- 通訊 --> J["<span style='color:#0288d1'>Stockfish.js 象棋引擎</span>"]
+  end
+
+  subgraph 開發與部署 [Build & Deployment]
+    K["<span style='color:#1976d2'>Vite 開發環境</span>"] --> B
+    L["<span style='color:#1976d2'>Docker / Nginx 生產環境</span>"] --> B
+  end
+
+  style A fill:#ffe4b5,stroke:#333,stroke-width:2px
+  style J fill:#b3e5fc,stroke:#333,stroke-width:2px
+  style K fill:#f0f8ff,stroke:#333,stroke-width:2px
+  style L fill:#f0f8ff,stroke:#333,stroke-width:2px
+```
+
 ### 安裝與運行
 
 #### 安裝依賴
@@ -85,6 +117,34 @@ Chess in Vue is a web-based chess game developed with Vue 3 and Vite. This proje
 - **HTTP Client**: Axios
 - **Chess Engine**: Stockfish.js
 - **Containerization**: Docker
+
+### Project Structure
+
+```mermaid
+graph TD
+  subgraph Client [Browser]
+    A["<span style='color:#b8860b'>User</span>"] --> B[Vue.js Application]
+  end
+  subgraph Vue.js Application [src/]
+    B --> C[main.js Entry Point]
+    C --> D[App.vue Root Component]
+    D -- Uses --> F[store.js Vuex State Management]
+    D --> E[ChessBoard.vue]
+    E --> G[ChessPiece.vue / pieces/*.vue]
+    E -- Interacts --> I[stockfish.service.js]
+  end
+  subgraph External Services [External Services]
+    I -- Communicates --> J["<span style='color:#0288d1'>Stockfish.js Chess Engine</span>"]
+  end
+  subgraph Build & Deployment [Build & Deployment]
+    K["<span style='color:#1976d2'>Vite Development Environment</span>"] --> B
+    L["<span style='color:#1976d2'>Docker / Nginx Production Environment</span>"] --> B
+  end
+  style A fill:#ffe4b5,stroke:#333,stroke-width:2px
+  style J fill:#b3e5fc,stroke:#333,stroke-width:2px
+  style K fill:#f0f8ff,stroke:#333,stroke-width:2px
+  style L fill:#f0f8ff,stroke:#333,stroke-width:2px
+```
 
 ### Installation and Running
 
