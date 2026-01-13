@@ -1,0 +1,49 @@
+# 生產環境 Docker Compose 配置
+# 此檔案專用於 Portainer GitOps 部署，使用預構建的 GHCR Image
+
+services:
+  chess-game:
+    image: ${IMAGE_URL:-ghcr.io/rayliu1999/chess-in-vue:latest}
+    container_name: chess-game
+
+    # 端口映射 - 僅監聽本地，供反向代理 (CloudPanel/Nginx) 使用
+    ports:
+      - "127.0.0.1:${PORT:-3000}:${NGINX_PORT-3000}"
+
+    # 環境變量 - 在 Portainer Stack 設定中定義
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NGINX_PORT=${NGINX_PORT:-3000}
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}
+
+    # 重啟策略
+    restart: unless-stopped
+
+    # 資源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+
+    # 健康檢查
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://127.0.0.1:${NGINX_PORT}/ || exit 1",
+        ]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # 日誌配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
