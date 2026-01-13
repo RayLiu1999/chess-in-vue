@@ -26,8 +26,8 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY --from=builder /app/node_modules/stockfish.js/stockfish.js /usr/share/nginx/html/
 COPY --from=builder /app/node_modules/stockfish.js/stockfish.wasm /usr/share/nginx/html/
 
-# 暴露 3000 端口
-EXPOSE 3000
+# 複製 Nginx 配置模板 (容器啟動時會自動執行 envsubst 替換變數)
+COPY ./config/nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # 啟動 nginx
 CMD ["nginx", "-g", "daemon off;"]

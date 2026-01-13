@@ -1,65 +1,50 @@
-# Docker Compose 版本
-version: '3.8'
-
-# 服務定義
 services:
-  # 國際象棋遊戲服務
   chess-game:
-    env_file:
-      - ./config/.env.docker
-
-    # 使用本地 Dockerfile 構建
     build:
-      context: .                # 構建上下文為當前目錄
-      dockerfile: Dockerfile    # 使用當前目錄的 Dockerfile
-    
+      context: . # 構建上下文為當前目錄
+      dockerfile: Dockerfile # 使用當前目錄的 Dockerfile
+
     # 容器名稱
     container_name: chess-game
-    
+
     # 端口映射 - 主機端口:容器端口
     ports:
-      - "${PORT:-3000}:3000"   # 如果沒有設置 PORT 環境變量，默認使用 3000
-    
-    # 掛載卷 - 用於持久化數據和日誌
-    volumes:
-      - ./logs/nginx:/var/log/nginx                # Nginx 日誌
-      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro # Nginx 配置（唯讀）
-    
+      - "${PORT:-3000}:${NGINX_PORT:-3000}" # 如果沒有設置 PORT 環境變量，默認使用 3000
+
     # 環境變量
     environment:
-      - NODE_ENV=production
-      - NGINX_PORT=3000
-      - NGINX_SERVER_NAME=localhost
-    
+      - NODE_ENV=${NODE_ENV}
+      - NGINX_PORT=${NGINX_PORT}
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME}
+
     # 重啟策略
     restart: unless-stopped
-    
-    # 資源限制
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '1'    # 最多使用 1 個 CPU
-    #       memory: 1G   # 最多使用 1GB 記憶體
-    #     reservations:
-    #       cpus: '0.25' # 保證至少 0.25 個 CPU
-    #       memory: 256M # 保證至少 256MB 記憶體
-    
-    # 健康檢查
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:3000"]
-    #   interval: 1m     # 每分鐘檢查一次
-    #   timeout: 10s     # 超時時間 10 秒
-    #   retries: 3       # 重試 3 次
-    #   start_period: 30s # 啟動後等待 30 秒開始檢查
-    
-    # 日誌配置
-    # logging:
-    #   driver: "json-file"
-    #   options:
-    #     max-size: "10m"   # 每個日誌文件最大 10MB
-    #     max-file: "3"     # 保留 3 個日誌文件
 
-# 自定義網絡
-networks:
-  default:
-    driver: bridge
+    # 資源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5" # 限制最高 0.5 核 (Demo 靜態站點非常足夠)
+          memory: 128M # 限制最高 128MB (Nginx Alpine 只需 ~10MB)
+        reservations:
+          cpus: "0.05" # 保留極少 CPU
+          memory: 32M # 保留 32MB 即可啟動
+
+    # 健康檢查
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider http://127.0.0.1:${NGINX_PORT:-3000}/ || exit 1",
+        ]
+      interval: 1m # 每分鐘檢查一次
+      timeout: 10s # 超時時間 10 秒
+      retries: 3 # 重試 3 次
+      start_period: 10s # 啟動後等待 30 秒開始檢查
+
+    # 日誌配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m" # 每個日誌文件最大 10MB
+        max-file: "3" # 保留 3 個日誌文件
